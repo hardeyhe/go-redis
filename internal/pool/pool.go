@@ -263,7 +263,7 @@ func (p *ConnPool) Get(ctx context.Context) (*Conn, error) {
 			break
 		}
 
-		if p.isStaleConn(cn) {
+		if p.isStaleConn(cn, false) {
 			_ = p.CloseConn(cn)
 			continue
 		}
@@ -529,7 +529,7 @@ func (p *ConnPool) reapStaleConn() *Conn {
 	}
 
 	cn := p.idleConns[0]
-	if !p.isStaleConn(cn) {
+	if !p.isStaleConn(cn, true) {
 		return nil
 	}
 
@@ -540,8 +540,11 @@ func (p *ConnPool) reapStaleConn() *Conn {
 	return cn
 }
 
-func (p *ConnPool) isStaleConn(cn *Conn) bool {
+func (p *ConnPool) isStaleConn(cn *Conn, isCheckCon bool) bool {
 	if p.opt.IdleTimeout == 0 && p.opt.MaxConnAge == 0 {
+		if !isCheckCon {
+			return false
+		}
 		return connCheck(cn.netConn) != nil
 	}
 
@@ -553,5 +556,8 @@ func (p *ConnPool) isStaleConn(cn *Conn) bool {
 		return true
 	}
 
+	if !isCheckCon {
+		return false
+	}
 	return connCheck(cn.netConn) != nil
 }
